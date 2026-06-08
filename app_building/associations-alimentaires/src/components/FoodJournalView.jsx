@@ -330,6 +330,21 @@ function SymptomEditor({ symptoms, onChange }) {
       {symptoms.map((symptom, index) => (
         expandedIndexes.has(index) ? (
           <div key={`${symptom.tag}-${index}`} className="space-y-4 rounded-2xl border bg-white p-4">
+            <button
+              type="button"
+              onClick={() => collapseSymptom(index)}
+              className="flex w-full items-start justify-between gap-3 rounded-xl bg-slate-50 p-3 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+              aria-label={`Replier le ressenti ${symptom.tag}`}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-gray-950">{symptom.tag} · {symptom.intensity}/5 · {symptom.delay}</span>
+                {symptom.note && <span className="mt-1 block text-sm text-gray-500">{symptom.note}</span>}
+              </span>
+              <span className="mt-0.5 shrink-0 text-gray-400">
+                <EditIcon className="h-4 w-4" />
+              </span>
+            </button>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <FieldLabel htmlFor={`symptom-tag-${index}`}>Type</FieldLabel>
