@@ -264,6 +264,44 @@ function FoodPicker({ searchFoods, foods, onAddFood, onRemoveFood }) {
 }
 
 function SymptomEditor({ symptoms, onChange }) {
+  const [expandedIndexes, setExpandedIndexes] = useState(() => new Set())
+
+  useEffect(() => {
+    setExpandedIndexes((current) => (
+      new Set([...current].filter((index) => index < symptoms.length))
+    ))
+  }, [symptoms.length])
+
+  function addSymptom() {
+    const nextIndex = symptoms.length
+    onChange([...symptoms, { ...emptySymptom }])
+    setExpandedIndexes((current) => new Set([...current, nextIndex]))
+  }
+
+  function expandSymptom(index) {
+    setExpandedIndexes((current) => new Set([...current, index]))
+  }
+
+  function collapseSymptom(index) {
+    setExpandedIndexes((current) => {
+      const next = new Set(current)
+      next.delete(index)
+      return next
+    })
+  }
+
+  function removeSymptom(index) {
+    onChange(symptoms.filter((_, symptomIndex) => symptomIndex !== index))
+    setExpandedIndexes((current) => {
+      const next = new Set()
+      current.forEach((expandedIndex) => {
+        if (expandedIndex < index) next.add(expandedIndex)
+        if (expandedIndex > index) next.add(expandedIndex - 1)
+      })
+      return next
+    })
+  }
+
   function updateSymptom(index, patch) {
     onChange(symptoms.map((symptom, symptomIndex) => (
       symptomIndex === index ? { ...symptom, ...patch } : symptom
@@ -276,7 +314,7 @@ function SymptomEditor({ symptoms, onChange }) {
         <FieldLabel>Ressentis</FieldLabel>
         <button
           type="button"
-          onClick={() => onChange([...symptoms, { ...emptySymptom }])}
+          onClick={addSymptom}
           className="rounded-full border bg-white px-3 py-1 text-sm font-medium hover:bg-gray-50"
         >
           Ajouter
@@ -290,65 +328,92 @@ function SymptomEditor({ symptoms, onChange }) {
       )}
 
       {symptoms.map((symptom, index) => (
-        <div key={`${symptom.tag}-${index}`} className="space-y-4 rounded-2xl border bg-white p-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <FieldLabel htmlFor={`symptom-tag-${index}`}>Type</FieldLabel>
-              <select
-                id={`symptom-tag-${index}`}
-                value={symptom.tag}
-                onChange={(event) => updateSymptom(index, { tag: event.target.value })}
-                className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
-              >
-                {symptomTags.map((tag) => <option key={tag}>{tag}</option>)}
-              </select>
+        expandedIndexes.has(index) ? (
+          <div key={`${symptom.tag}-${index}`} className="space-y-4 rounded-2xl border bg-white p-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <FieldLabel htmlFor={`symptom-tag-${index}`}>Type</FieldLabel>
+                <select
+                  id={`symptom-tag-${index}`}
+                  value={symptom.tag}
+                  onChange={(event) => updateSymptom(index, { tag: event.target.value })}
+                  className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+                >
+                  {symptomTags.map((tag) => <option key={tag}>{tag}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <FieldLabel htmlFor={`symptom-delay-${index}`}>Délai</FieldLabel>
+                <select
+                  id={`symptom-delay-${index}`}
+                  value={symptom.delay}
+                  onChange={(event) => updateSymptom(index, { delay: event.target.value })}
+                  className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+                >
+                  {symptomDelays.map((delay) => <option key={delay}>{delay}</option>)}
+                </select>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <FieldLabel htmlFor={`symptom-delay-${index}`}>Délai</FieldLabel>
-              <select
-                id={`symptom-delay-${index}`}
-                value={symptom.delay}
-                onChange={(event) => updateSymptom(index, { delay: event.target.value })}
-                className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
-              >
-                {symptomDelays.map((delay) => <option key={delay}>{delay}</option>)}
-              </select>
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor={`symptom-intensity-${index}`}>Intensité</FieldLabel>
+                <span className="text-sm font-semibold text-gray-700">{symptom.intensity}/5</span>
+              </div>
+              <input
+                id={`symptom-intensity-${index}`}
+                type="range"
+                min="0"
+                max="5"
+                value={symptom.intensity}
+                onChange={(event) => updateSymptom(index, { intensity: Number(event.target.value) })}
+                className="w-full"
+              />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <FieldLabel htmlFor={`symptom-intensity-${index}`}>Intensité</FieldLabel>
-              <span className="text-sm font-semibold text-gray-700">{symptom.intensity}/5</span>
-            </div>
-            <input
-              id={`symptom-intensity-${index}`}
-              type="range"
-              min="0"
-              max="5"
-              value={symptom.intensity}
-              onChange={(event) => updateSymptom(index, { intensity: Number(event.target.value) })}
-              className="w-full"
+            <textarea
+              value={symptom.note}
+              onChange={(event) => updateSymptom(index, { note: event.target.value })}
+              placeholder="Note sur ce ressenti"
+              rows="2"
+              className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
             />
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => collapseSymptom(index)}
+                className="rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+              >
+                Publier le ressenti
+              </button>
+              <button
+                type="button"
+                onClick={() => removeSymptom(index)}
+                className="text-sm font-medium text-red-700 hover:text-red-900"
+              >
+                Retirer ce ressenti
+              </button>
+            </div>
           </div>
-
-          <textarea
-            value={symptom.note}
-            onChange={(event) => updateSymptom(index, { note: event.target.value })}
-            placeholder="Note sur ce ressenti"
-            rows="2"
-            className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
-          />
-
+        ) : (
           <button
+            key={`${symptom.tag}-${index}`}
             type="button"
-            onClick={() => onChange(symptoms.filter((_, symptomIndex) => symptomIndex !== index))}
-            className="text-sm font-medium text-red-700 hover:text-red-900"
+            onClick={() => expandSymptom(index)}
+            className="flex w-full items-start justify-between gap-3 rounded-2xl border bg-white p-4 text-left hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+            aria-label={`Modifier le ressenti ${symptom.tag}`}
           >
-            Retirer ce ressenti
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-gray-950">{symptom.tag} · {symptom.intensity}/5 · {symptom.delay}</span>
+              {symptom.note && <span className="mt-1 block text-sm text-gray-500">{symptom.note}</span>}
+            </span>
+            <span className="mt-0.5 shrink-0 text-gray-400">
+              <EditIcon className="h-4 w-4" />
+            </span>
           </button>
-        </div>
+        )
       ))}
     </div>
   )
