@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 
-const STORAGE_KEY = "assocAlim.foodJournal.v1"
+const APP_ENV = import.meta.env.MODE === "production" ? "prod" : import.meta.env.MODE
+const LEGACY_STORAGE_KEY = "assocAlim.foodJournal.v1"
+const STORAGE_KEY = `${LEGACY_STORAGE_KEY}.${APP_ENV}`
 
 const symptomTags = [
   "Ballonnement",
@@ -74,7 +76,9 @@ function readStoredJournal() {
   }
 
   try {
-    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null")
+    const storedValue = window.localStorage.getItem(STORAGE_KEY)
+      || (APP_ENV === "preprod" ? null : window.localStorage.getItem(LEGACY_STORAGE_KEY))
+    const stored = JSON.parse(storedValue || "null")
     if (!stored || !Array.isArray(stored.suspects) || !Array.isArray(stored.entries)) {
       return { suspects: defaultSuspects, entries: [] }
     }

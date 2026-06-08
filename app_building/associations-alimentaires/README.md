@@ -1,16 +1,48 @@
-# React + Vite
+# Associations alimentaires
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Application React/Vite pour consulter les associations alimentaires et tenir un journal personnel.
 
-Currently, two official plugins are available:
+## Environnements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `main` correspond a la production.
+- `preprod` correspond a la preproduction et sert aux tests avant mise en production.
 
-## React Compiler
+Le journal personnel est stocke dans le navigateur avec une cle differente par environnement:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- prod: `assocAlim.foodJournal.v1.prod`
+- preprod: `assocAlim.foodJournal.v1.preprod`
+- local dev: `assocAlim.foodJournal.v1.development`
 
-## Expanding the ESLint configuration
+La preproduction ne relit pas l'ancienne cle de stockage, afin d'eviter de melanger les donnees de test avec les donnees utilisees en production.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Commandes
+
+```bash
+npm run dev
+npm run dev:preprod
+npm run build:prod
+npm run build:preprod
+```
+
+Si `npm` n'est pas installe globalement sur la machine, utiliser les scripts locaux:
+
+```bash
+npm run local-dev
+npm run local-dev:preprod
+```
+
+## Workflow recommande
+
+Travailler et tester sur `preprod`:
+
+```bash
+git checkout preprod
+```
+
+Quand les changements sont valides:
+
+```bash
+git checkout main
+git merge preprod
+git push
+```

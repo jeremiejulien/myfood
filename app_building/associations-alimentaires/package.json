@@ -5,11 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:preprod": "vite --mode preprod",
     "local-dev": "PATH=\"$PWD/node-local/bin:$PATH\" npm run dev",
+    "local-dev:preprod": "PATH=\"$PWD/node-local/bin:$PATH\" npm run dev:preprod",
     "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "build:preprod": "vite build --mode preprod",
     "build:aliments": "node scripts/build-aliments.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:preprod": "vite preview --mode preprod"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
