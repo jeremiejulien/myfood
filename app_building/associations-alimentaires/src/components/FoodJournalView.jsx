@@ -58,6 +58,20 @@ function fromDatetimeLocalValue(value) {
   return value ? new Date(value).toISOString() : new Date().toISOString()
 }
 
+function getDelayFromConsumedAt(consumedAt, symptomDate = new Date()) {
+  const consumedTime = new Date(consumedAt).getTime()
+  const symptomTime = symptomDate.getTime()
+
+  if (!Number.isFinite(consumedTime) || symptomTime < consumedTime) return emptySymptom.delay
+
+  const hours = (symptomTime - consumedTime) / (1000 * 60 * 60)
+  if (hours < 1) return "Immédiat"
+  if (hours < 3) return "1-3h"
+  if (hours < 12) return "3-12h"
+  if (hours < 36) return "Lendemain"
+  return "Autre"
+}
+
 function formatDate(value) {
   if (!value) return ""
 
@@ -263,7 +277,7 @@ function FoodPicker({ searchFoods, foods, onAddFood, onRemoveFood }) {
   )
 }
 
-function SymptomEditor({ symptoms, onChange }) {
+function SymptomEditor({ symptoms, consumedAt, onChange }) {
   const [expandedIndexes, setExpandedIndexes] = useState(() => new Set())
 
   useEffect(() => {
@@ -274,7 +288,13 @@ function SymptomEditor({ symptoms, onChange }) {
 
   function addSymptom() {
     const nextIndex = symptoms.length
-    onChange([...symptoms, { ...emptySymptom }])
+    onChange([
+      ...symptoms,
+      {
+        ...emptySymptom,
+        delay: getDelayFromConsumedAt(consumedAt),
+      },
+    ])
     setExpandedIndexes((current) => new Set([...current, nextIndex]))
   }
 
@@ -592,6 +612,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
 
       <SymptomEditor
         symptoms={entry.symptoms}
+        consumedAt={entry.consumedAt}
         onChange={(symptoms) => setEntry({ ...entry, symptoms })}
       />
 
