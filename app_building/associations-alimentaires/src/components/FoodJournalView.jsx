@@ -143,6 +143,15 @@ function EditIcon({ className = "h-4 w-4" }) {
   )
 }
 
+function PlusIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  )
+}
+
 function TrashIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -772,15 +781,17 @@ export default function FoodJournalView({ searchFoods }) {
           <button
             type="button"
             onClick={() => setIsSuspectsModalOpen(true)}
-            className="rounded-2xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
           >
+            <EditIcon className="h-4 w-4" />
             Suspects
           </button>
           <button
             type="button"
             onClick={openNewEntry}
-            className="rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
           >
+            <PlusIcon className="h-4 w-4" />
             Nouvelle prise
           </button>
         </div>
