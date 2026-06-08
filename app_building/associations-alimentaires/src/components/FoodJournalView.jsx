@@ -271,7 +271,7 @@ function SymptomEditor({ symptoms, onChange }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <FieldLabel>Ressentis</FieldLabel>
         <button
@@ -290,9 +290,9 @@ function SymptomEditor({ symptoms, onChange }) {
       )}
 
       {symptoms.map((symptom, index) => (
-        <div key={`${symptom.tag}-${index}`} className="space-y-3 rounded-2xl border bg-white p-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
+        <div key={`${symptom.tag}-${index}`} className="space-y-4 rounded-2xl border bg-white p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
               <FieldLabel htmlFor={`symptom-tag-${index}`}>Type</FieldLabel>
               <select
                 id={`symptom-tag-${index}`}
@@ -304,7 +304,7 @@ function SymptomEditor({ symptoms, onChange }) {
               </select>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <FieldLabel htmlFor={`symptom-delay-${index}`}>Délai</FieldLabel>
               <select
                 id={`symptom-delay-${index}`}
@@ -317,7 +317,7 @@ function SymptomEditor({ symptoms, onChange }) {
             </div>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <FieldLabel htmlFor={`symptom-intensity-${index}`}>Intensité</FieldLabel>
               <span className="text-sm font-semibold text-gray-700">{symptom.intensity}/5</span>
@@ -446,10 +446,10 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
   }
 
   return (
-    <form onSubmit={save} className="space-y-5">
+    <form onSubmit={save} className="space-y-4">
       <p className="text-sm text-gray-500">Note ce que tu as consommé et les ressentis observés.</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
           <FieldLabel htmlFor="journal-consumed-at">Date et heure</FieldLabel>
           <input
             id="journal-consumed-at"
@@ -461,7 +461,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <FieldLabel htmlFor="journal-suspect">Suspect principal</FieldLabel>
             <button
@@ -498,7 +498,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
         }))}
       />
 
-      <div className="space-y-1">
+      <div className="space-y-2">
         <FieldLabel htmlFor="journal-note">Quantité ou contexte</FieldLabel>
         <textarea
           id="journal-note"
@@ -515,7 +515,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
         onChange={(symptoms) => setEntry({ ...entry, symptoms })}
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3 pt-1">
         <button type="submit" disabled={!entry.suspectId} className="rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300">
           {editingEntry ? "Enregistrer les changements" : "Enregistrer la prise"}
         </button>
