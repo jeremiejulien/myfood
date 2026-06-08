@@ -1,0 +1,5 @@
+source,cible,relation
+fruits_acides,fruits_acides,compatible
+fruits_acides,fruits_mi_acides,compatible
+fruits_acides,amidons,incompatible
+fruits_acides,miel,neutre

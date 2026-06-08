@@ -1,0 +1,9 @@
+[
+  {
+    "id": "banane",
+    "label": "Banane",
+    "category": "fruits_doux",
+    "aliases": ["Bananes"],
+    "search_terms": ["banane", "bananes"]
+  }
+]
