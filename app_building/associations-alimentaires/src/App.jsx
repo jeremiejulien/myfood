@@ -199,7 +199,7 @@ function CategoryDrawer({ category, onClose, onSelectFood }) {
                 <h2 className="mt-1 text-xl font-semibold">{title}</h2>
                 <p className="mt-1 text-sm text-gray-500">{foods.length} aliment{foods.length > 1 ? "s" : ""}</p>
               </div>
-              <button type="button" onClick={onClose} className="rounded-full border px-3 py-1 text-sm hover:bg-gray-50">✕</button>
+              <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center text-xl leading-none text-gray-500 hover:text-gray-950" aria-label="Fermer la liste">✕</button>
             </div>
           </div>
 
