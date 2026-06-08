@@ -25,7 +25,7 @@ export default function CategoryDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center text-xl leading-none text-gray-500 hover:text-gray-950"
+            className="flex h-8 w-8 items-center justify-center text-2xl leading-none text-gray-500 hover:text-gray-950"
             aria-label="Fermer la fenêtre"
           >
             ✕
