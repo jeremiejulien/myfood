@@ -881,19 +881,19 @@ export default function FoodJournalView({ searchFoods }) {
         <div className="flex shrink-0 flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setIsSuspectsModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
-          >
-            <EditIcon className="h-4 w-4" />
-            Suspects
-          </button>
-          <button
-            type="button"
             onClick={openNewEntry}
             className="inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
           >
             <PlusIcon className="h-4 w-4" />
             Nouvelle prise
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSuspectsModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+          >
+            <EditIcon className="h-4 w-4" />
+            Suspects
           </button>
         </div>
       </header>
