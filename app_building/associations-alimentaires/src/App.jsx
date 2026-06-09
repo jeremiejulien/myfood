@@ -329,7 +329,7 @@ export default function FoodPairingApp() {
     <div className="min-h-screen bg-slate-50 p-4 pb-12 text-gray-950 sm:p-6">
       <div className="mx-auto max-w-3xl space-y-5">
         <header className="space-y-4 pt-4">
-          <h1 className="text-2xl font-semibold tracking-tight">Associations alimentaires</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Associations alimentaires</h1>
           <p className="text-sm text-gray-500">
             Recherche les associations entre aliments ou tiens un journal personnel de tolérance.
           </p>

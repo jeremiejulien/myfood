@@ -875,7 +875,7 @@ export default function FoodJournalView({ searchFoods }) {
     <div className="space-y-5">
       <header className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Journal de tolérance</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Journal de tolérance</h1>
           <p className="mt-1 text-sm text-gray-500">Observe les prises alimentaires suspectes et les ressentis associés, sans diagnostic automatique.</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
