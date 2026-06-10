@@ -812,9 +812,9 @@ export default function FoodJournalView({
         return
       }
 
-      const nextJournal = normalizeJournal(data?.journal_data || readStoredJournal())
+      const nextJournal = normalizeJournal(data?.journal_data || { suspects: defaultSuspects, entries: [] })
       setJournal(nextJournal)
-      setSyncState(data?.journal_data ? "Synchronisé" : "Local importé")
+      setSyncState(data?.journal_data ? "Synchronisé" : "Nouveau journal")
       hasLoadedRemoteJournal.current = true
       setLoadedUserId(user.id)
     }
@@ -827,10 +827,10 @@ export default function FoodJournalView({
   }, [authConfigured, remoteEnabled, supabaseClient, user?.id])
 
   useEffect(() => {
-    if (remoteEnabled) return
+    if (remoteEnabled || authConfigured) return
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(journal))
-  }, [journal, remoteEnabled])
+  }, [authConfigured, journal, remoteEnabled])
 
   useEffect(() => {
     if (!remoteEnabled || !isJournalReady || !hasLoadedRemoteJournal.current) return undefined

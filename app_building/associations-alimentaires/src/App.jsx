@@ -349,6 +349,26 @@ function AccountModal({ session, isAuthLoading, authConfigured, supabaseClient, 
   )
 }
 
+function JournalAuthRequired({ onOpenAccount }) {
+  return (
+    <section className="rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold">Connexion requise</h2>
+        <p className="text-sm text-gray-500">
+          Connecte-toi pour ajouter une prise et retrouver uniquement les entrées liées à ton compte.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onOpenAccount}
+        className="mt-5 min-h-12 w-full rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 sm:w-auto"
+      >
+        Se connecter
+      </button>
+    </section>
+  )
+}
+
 export default function FoodPairingApp() {
   const [activeView, setActiveView] = useState("associations")
   const [query, setQuery] = useState("")
@@ -535,6 +555,8 @@ export default function FoodPairingApp() {
           <section className="rounded-2xl border bg-white p-5 text-sm text-gray-500 shadow-sm sm:rounded-3xl">
             Chargement de la session...
           </section>
+        ) : isSupabaseConfigured && !session ? (
+          <JournalAuthRequired onOpenAccount={() => setIsAccountOpen(true)} />
         ) : (
           <FoodJournalView
             searchFoods={searchFoods}
