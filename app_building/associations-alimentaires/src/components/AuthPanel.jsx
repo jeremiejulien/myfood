@@ -1,15 +1,36 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+
+const EMAIL_COOLDOWN_SECONDS = 60
+const LAST_EMAIL_SENT_KEY = "assocAlim.auth.lastEmailSentAt"
+
+function getRateLimitMessage() {
+  return "Trop de demandes de connexion par email. Attends quelques minutes avant de réessayer."
+}
 
 export default function AuthPanel({ supabaseClient, framed = true }) {
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState("")
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)
+  const [remainingCooldown, setRemainingCooldown] = useState(0)
+
+  const cleanEmail = useMemo(() => email.trim(), [email])
+
+  useEffect(() => {
+    function refreshCooldown() {
+      const lastSentAt = Number(window.localStorage.getItem(LAST_EMAIL_SENT_KEY) || 0)
+      const elapsedSeconds = Math.floor((Date.now() - lastSentAt) / 1000)
+      setRemainingCooldown(Math.max(0, EMAIL_COOLDOWN_SECONDS - elapsedSeconds))
+    }
+
+    refreshCooldown()
+    const intervalId = window.setInterval(refreshCooldown, 1000)
+    return () => window.clearInterval(intervalId)
+  }, [])
 
   async function submit(event) {
     event.preventDefault()
-    const cleanEmail = email.trim()
-    if (!cleanEmail) return
+    if (!cleanEmail || remainingCooldown > 0) return
 
     setIsSending(true)
     setStatus("")
@@ -23,8 +44,16 @@ export default function AuthPanel({ supabaseClient, framed = true }) {
     })
 
     if (signInError) {
-      setError(signInError.message)
+      if (signInError.message.toLowerCase().includes("rate limit")) {
+        window.localStorage.setItem(LAST_EMAIL_SENT_KEY, String(Date.now()))
+        setRemainingCooldown(EMAIL_COOLDOWN_SECONDS)
+        setError(getRateLimitMessage())
+      } else {
+        setError(signInError.message)
+      }
     } else {
+      window.localStorage.setItem(LAST_EMAIL_SENT_KEY, String(Date.now()))
+      setRemainingCooldown(EMAIL_COOLDOWN_SECONDS)
       setStatus("Lien envoyé. Ouvre ton email pour te connecter.")
     }
 
@@ -56,10 +85,10 @@ export default function AuthPanel({ supabaseClient, framed = true }) {
 
         <button
           type="submit"
-          disabled={isSending}
+          disabled={isSending || remainingCooldown > 0}
           className="min-h-12 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
         >
-          {isSending ? "Envoi..." : "Recevoir le lien"}
+          {isSending ? "Envoi..." : remainingCooldown > 0 ? `Réessayer dans ${remainingCooldown}s` : "Recevoir le lien"}
         </button>
       </form>
 
