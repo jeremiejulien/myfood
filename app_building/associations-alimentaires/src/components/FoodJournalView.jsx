@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 const APP_ENV = import.meta.env.MODE === "production" ? "prod" : import.meta.env.MODE
 const LEGACY_STORAGE_KEY = "assocAlim.foodJournal.v1"
@@ -103,6 +103,17 @@ function readStoredJournal() {
     }
   } catch {
     return { suspects: defaultSuspects, entries: [] }
+  }
+}
+
+function normalizeJournal(value) {
+  if (!value || !Array.isArray(value.suspects) || !Array.isArray(value.entries)) {
+    return { suspects: defaultSuspects, entries: [] }
+  }
+
+  return {
+    suspects: value.suspects.length ? value.suspects : defaultSuspects,
+    entries: value.entries,
   }
 }
 
@@ -749,16 +760,104 @@ function EntryList({ entries, suspects, onEdit, onDelete }) {
   )
 }
 
-export default function FoodJournalView({ searchFoods }) {
+export default function FoodJournalView({
+  searchFoods,
+  session = null,
+  supabaseClient = null,
+  authConfigured = false,
+  onSignOut,
+}) {
+  const user = session?.user
+  const remoteEnabled = Boolean(authConfigured && supabaseClient && user?.id)
   const [journal, setJournal] = useState(readStoredJournal)
+  const [loadedUserId, setLoadedUserId] = useState("")
+  const [syncState, setSyncState] = useState("Local")
+  const [syncError, setSyncError] = useState("")
   const [filters, setFilters] = useState({ suspectId: "", symptomTag: "", period: "all", text: "" })
   const [editingEntry, setEditingEntry] = useState(null)
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false)
   const [isSuspectsModalOpen, setIsSuspectsModalOpen] = useState(false)
+  const hasLoadedRemoteJournal = useRef(false)
+  const isJournalReady = !remoteEnabled || loadedUserId === user?.id
+  const displayedSyncState = remoteEnabled && !isJournalReady
+    ? "Chargement..."
+    : remoteEnabled
+      ? syncState
+      : authConfigured
+        ? "Connexion requise"
+        : "Local"
 
   useEffect(() => {
+    if (!remoteEnabled) {
+      hasLoadedRemoteJournal.current = false
+      return undefined
+    }
+
+    let isCancelled = false
+
+    async function loadJournal() {
+      hasLoadedRemoteJournal.current = false
+
+      const { data, error } = await supabaseClient
+        .from("user_journals")
+        .select("journal_data")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (isCancelled) return
+
+      if (error) {
+        setSyncError(error.message)
+        setSyncState("Erreur")
+        setLoadedUserId(user.id)
+        return
+      }
+
+      const nextJournal = normalizeJournal(data?.journal_data || readStoredJournal())
+      setJournal(nextJournal)
+      setSyncState(data?.journal_data ? "Synchronisé" : "Local importé")
+      hasLoadedRemoteJournal.current = true
+      setLoadedUserId(user.id)
+    }
+
+    loadJournal()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [authConfigured, remoteEnabled, supabaseClient, user?.id])
+
+  useEffect(() => {
+    if (remoteEnabled) return
+
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(journal))
-  }, [journal])
+  }, [journal, remoteEnabled])
+
+  useEffect(() => {
+    if (!remoteEnabled || !isJournalReady || !hasLoadedRemoteJournal.current) return undefined
+
+    const timeoutId = window.setTimeout(async () => {
+      setSyncError("")
+      setSyncState("Synchronisation...")
+
+      const { error } = await supabaseClient
+        .from("user_journals")
+        .upsert({
+          user_id: user.id,
+          journal_data: journal,
+          updated_at: new Date().toISOString(),
+        })
+
+      if (error) {
+        setSyncError(error.message)
+        setSyncState("Erreur")
+      } else {
+        setSyncState("Synchronisé")
+      }
+    }, 500)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isJournalReady, journal, remoteEnabled, supabaseClient, user?.id])
 
   const suspectCounts = useMemo(() => (
     journal.entries.reduce((counts, entry) => {
@@ -871,6 +970,15 @@ export default function FoodJournalView({ searchFoods }) {
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">Journal de tolérance</h1>
           <p className="mt-1 text-sm text-gray-500">Observe les prises alimentaires suspectes et les ressentis associés, sans diagnostic automatique.</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            {user?.email && <span>{user.email}</span>}
+            <span className="rounded-full bg-white px-2 py-1 ring-1 ring-gray-200">{displayedSyncState}</span>
+            {onSignOut && (
+              <button type="button" onClick={onSignOut} className="font-medium text-gray-700 hover:text-gray-950">
+                Déconnexion
+              </button>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap">
           <button
@@ -892,10 +1000,25 @@ export default function FoodJournalView({ searchFoods }) {
         </div>
       </header>
 
-      <div className="hidden">
-        <JournalFilters filters={filters} suspects={journal.suspects} onChange={setFilters} />
-      </div>
-      <EntryList entries={filteredEntries} suspects={journal.suspects} onEdit={openEditEntry} onDelete={deleteEntry} />
+      {syncError && (
+        <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800">
+          Synchronisation impossible: {syncError}
+        </div>
+      )}
+
+      {!isJournalReady ? (
+        <section className="rounded-2xl border bg-white p-5 text-sm text-gray-500 shadow-sm sm:rounded-3xl">
+          Chargement du journal...
+        </section>
+      ) : (
+        <>
+
+          <div className="hidden">
+            <JournalFilters filters={filters} suspects={journal.suspects} onChange={setFilters} />
+          </div>
+          <EntryList entries={filteredEntries} suspects={journal.suspects} onEdit={openEditEntry} onDelete={deleteEntry} />
+        </>
+      )}
 
       {isEntryModalOpen && (
         <Modal title={editingEntry ? "Modifier la prise" : "Nouvelle prise"} onClose={closeEntryModal}>

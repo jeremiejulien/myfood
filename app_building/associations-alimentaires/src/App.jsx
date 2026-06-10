@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import AuthPanel from "./components/AuthPanel.jsx"
 import FoodJournalView from "./components/FoodJournalView.jsx"
 import { alimentsBruts } from "./data/alimentsBruts.js"
+import { isSupabaseConfigured, supabase } from "./lib/supabase.js"
 
 const compatibility = {
   fruits_acides: { compatible: ["fruits_acides", "fruits_mi_acides"], neutre: ["fruits_seches", "fruits_neutres", "miel", "proteines_maigres", "legumes_amidon_moyen", "eau"], incompatible: ["sucreries", "amidons", "legumes_secs", "proteines_grasses", "lait", "lipides", "legumes_amidon_faible", "sel"] },
@@ -298,6 +300,30 @@ export default function FoodPairingApp() {
   const [compareQuery, setCompareQuery] = useState("")
   const [selectedComparisonFood, setSelectedComparisonFood] = useState(null)
   const [openCategory, setOpenCategory] = useState(null)
+  const [session, setSession] = useState(null)
+  const [isAuthLoading, setIsAuthLoading] = useState(isSupabaseConfigured)
+
+  useEffect(() => {
+    if (!supabase) return undefined
+
+    let isMounted = true
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return
+      setSession(data.session)
+      setIsAuthLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setIsAuthLoading(false)
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const suggestions = useMemo(() => searchFoodsAndCategories(query), [query])
   const comparisonSuggestions = useMemo(() => searchFoodsAndCategories(compareQuery), [compareQuery])
@@ -432,8 +458,20 @@ export default function FoodPairingApp() {
               </section>
             )}
           </div>
+        ) : isAuthLoading ? (
+          <section className="rounded-2xl border bg-white p-5 text-sm text-gray-500 shadow-sm sm:rounded-3xl">
+            Chargement de la session...
+          </section>
+        ) : isSupabaseConfigured && !session ? (
+          <AuthPanel supabaseClient={supabase} />
         ) : (
-          <FoodJournalView searchFoods={searchFoods} />
+          <FoodJournalView
+            searchFoods={searchFoods}
+            session={session}
+            supabaseClient={supabase}
+            authConfigured={isSupabaseConfigured}
+            onSignOut={() => supabase?.auth.signOut()}
+          />
         )}
       </div>
 
