@@ -186,24 +186,24 @@ function CategoryDrawer({ category, onClose, onSelectFood }) {
       />
 
       <aside
-        className={`absolute right-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-2xl transition-transform duration-300 ease-out ${category ? "translate-x-0" : "translate-x-full"}`}
+        className={`absolute bottom-0 right-0 flex max-h-[85dvh] w-full flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-300 ease-out sm:top-0 sm:h-full sm:max-h-none sm:w-[88%] sm:max-w-sm sm:rounded-none ${category ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-x-full sm:translate-y-0"}`}
         role="dialog"
         aria-modal="true"
         aria-label={`Aliments de la catégorie ${title}`}
       >
         <div className="flex h-full flex-col">
-          <div className="border-b p-5">
+          <div className="border-b px-4 py-4 sm:p-5">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <div className="text-xs uppercase text-gray-400">Catégorie</div>
-                <h2 className="mt-1 text-xl font-semibold">{title}</h2>
+                <h2 className="mt-1 truncate text-lg font-semibold sm:text-xl">{title}</h2>
                 <p className="mt-1 text-sm text-gray-500">{foods.length} aliment{foods.length > 1 ? "s" : ""}</p>
               </div>
               <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center text-2xl leading-none text-gray-500 hover:text-gray-950" aria-label="Fermer la liste">✕</button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4">
             {foods.length ? (
               <div className="space-y-2">
                 {foods.map((item) => (
@@ -214,7 +214,7 @@ function CategoryDrawer({ category, onClose, onSelectFood }) {
                       onSelectFood(item)
                       onClose()
                     }}
-                    className="w-full rounded-2xl border p-3 text-left hover:bg-gray-50"
+                    className="w-full rounded-2xl border p-3 text-left hover:bg-gray-50 active:bg-gray-100"
                   >
                     <span className="block font-medium">{item.label}</span>
                     {item.requires_manual_review && <span className="mt-1 block text-xs text-gray-500">À vérifier</span>}
@@ -235,7 +235,7 @@ function RelationBlock({ title, groups = [], type, onOpenCategory }) {
   const icons = { compatible: "✅", neutre: "🟡", incompatible: "❌" }
 
   return (
-    <div className={`rounded-2xl border p-4 ${relationStyles[type] || relationStyles.unknown}`}>
+    <div className={`rounded-2xl border p-3.5 sm:p-4 ${relationStyles[type] || relationStyles.unknown}`}>
       <div className="flex items-center gap-2 font-medium">
         <span className="text-base">{icons[type]}</span>
         <span>{title}</span>
@@ -248,7 +248,7 @@ function RelationBlock({ title, groups = [], type, onOpenCategory }) {
               key={group}
               type="button"
               onClick={() => onOpenCategory(group)}
-              className="rounded-full border bg-white/70 px-3 py-1 text-xs font-medium shadow-sm hover:bg-white"
+              className="min-h-9 rounded-full border bg-white/70 px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-white"
             >
               {labels[group] || group}
             </button>
@@ -265,7 +265,7 @@ function Suggestions({ suggestions, onSelect }) {
   if (!suggestions.length) return null
 
   return (
-    <div className="rounded-2xl border bg-white p-2 text-sm shadow-sm">
+    <div className="rounded-2xl border bg-white p-1.5 text-sm shadow-sm sm:p-2">
       {suggestions.map((item) => (
         <button
           key={`${item.type}-${item.id}`}
@@ -277,7 +277,7 @@ function Suggestions({ suggestions, onSelect }) {
               onSelect(item)
             }
           }}
-          className={`block w-full rounded-xl px-3 py-2 text-left hover:bg-gray-50 ${item.type === 'category' ? 'border-l-4 border-blue-400' : ''}`}
+          className={`block min-h-11 w-full rounded-xl px-3 py-2.5 text-left hover:bg-gray-50 active:bg-gray-100 ${item.type === 'category' ? 'border-l-4 border-blue-400' : ''}`}
         >
           <div className="flex items-center gap-2">
             {item.type === 'category' && <span className="text-lg">📂</span>}
@@ -326,10 +326,10 @@ export default function FoodPairingApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 pb-12 text-gray-950 sm:p-6">
-      <div className="mx-auto max-w-3xl space-y-5">
-        <header className="space-y-4 pt-4">
-          <h1 className="text-3xl font-semibold tracking-tight">Associations alimentaires</h1>
+    <div className="min-h-screen bg-slate-50 px-3 py-4 pb-10 text-gray-950 sm:p-6">
+      <div className="mx-auto max-w-3xl space-y-4 sm:space-y-5">
+        <header className="space-y-3 pt-1 sm:space-y-4 sm:pt-4">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Associations alimentaires</h1>
           <p className="text-sm text-gray-500">
             Recherche les associations entre aliments ou tiens un journal personnel de tolérance.
           </p>
@@ -337,14 +337,14 @@ export default function FoodPairingApp() {
             <button
               type="button"
               onClick={() => setActiveView("associations")}
-              className={`rounded-xl px-3 py-2 ${activeView === "associations" ? "bg-gray-950 text-white" : "text-gray-600 hover:bg-gray-50"}`}
+              className={`min-h-10 rounded-xl px-3 py-2 ${activeView === "associations" ? "bg-gray-950 text-white" : "text-gray-600 hover:bg-gray-50"}`}
             >
               Associations
             </button>
             <button
               type="button"
               onClick={() => setActiveView("journal")}
-              className={`rounded-xl px-3 py-2 ${activeView === "journal" ? "bg-gray-950 text-white" : "text-gray-600 hover:bg-gray-50"}`}
+              className={`min-h-10 rounded-xl px-3 py-2 ${activeView === "journal" ? "bg-gray-950 text-white" : "text-gray-600 hover:bg-gray-50"}`}
             >
               Journal
             </button>
@@ -352,7 +352,7 @@ export default function FoodPairingApp() {
         </header>
 
         {activeView === "associations" ? (
-          <div className="mx-auto max-w-lg space-y-5">
+          <div className="mx-auto max-w-lg space-y-4 sm:space-y-5">
             <section className="space-y-2">
               <label className="text-sm font-medium" htmlFor="food-search">Aliment principal</label>
               <div className="relative mt-2">
@@ -364,7 +364,7 @@ export default function FoodPairingApp() {
                     setSelectedFood(null)
                   }}
                   placeholder="Ex : banane, riz complet, fromage blanc, amidons"
-                  className="w-full rounded-2xl border px-4 py-3 pr-11 text-base outline-none focus:ring-2 focus:ring-gray-200"
+                  className="min-h-12 w-full rounded-2xl border px-4 py-3 pr-11 text-base outline-none focus:ring-2 focus:ring-gray-200"
                 />
                 {!!query && (
                   <button
@@ -382,7 +382,7 @@ export default function FoodPairingApp() {
             </section>
 
             {food && rules && (
-              <section className="space-y-5 rounded-3xl border p-5 shadow-sm">
+              <section className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm sm:space-y-5 sm:rounded-3xl sm:p-5">
                 <div>
                   <div className="text-xs uppercase text-gray-400">{food.type === 'category' ? '📂 Catégorie' : 'Aliment'}</div>
                   <div className="mt-1 font-semibold">{food.label}</div>
@@ -393,7 +393,7 @@ export default function FoodPairingApp() {
                   <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">Cet aliment est marqué comme “à vérifier”. Sa catégorie doit être validée avant de donner une association fiable.</div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-2.5 sm:space-y-3">
                   <RelationBlock title="Compatible avec" groups={rules.compatible} type="compatible" onOpenCategory={setOpenCategory} />
                   <RelationBlock title="Neutre avec" groups={rules.neutre} type="neutre" onOpenCategory={setOpenCategory} />
                   <RelationBlock title="À éviter avec" groups={rules.incompatible} type="incompatible" onOpenCategory={setOpenCategory} />
@@ -402,7 +402,7 @@ export default function FoodPairingApp() {
             )}
 
             {food && (
-              <section className="space-y-4 rounded-3xl border p-5">
+              <section className="space-y-4 rounded-2xl border bg-white p-4 sm:rounded-3xl sm:p-5">
                 <div>
                   <h2 className="font-semibold">Tester une association</h2>
                   <p className="mt-1 text-sm text-gray-500">Compare {food.label} avec un deuxième aliment.</p>
@@ -415,7 +415,7 @@ export default function FoodPairingApp() {
                     setSelectedComparisonFood(null)
                   }}
                   placeholder="Ex : miel, pomme de terre, lait"
-                  className="w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+                  className="min-h-12 w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
                 />
 
                 {!!compareQuery.trim() && !selectedComparisonFood && <Suggestions suggestions={comparisonSuggestions} onSelect={(item) => {

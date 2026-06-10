@@ -189,13 +189,13 @@ function Modal({ title, children, onClose }) {
       />
 
       <section
-        className="relative z-10 max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border bg-slate-50 shadow-2xl sm:rounded-3xl"
+        className="relative z-10 max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border bg-slate-50 shadow-2xl sm:max-h-[92vh] sm:rounded-3xl"
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b bg-white px-5 py-4">
-          <h2 className="font-semibold">{title}</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b bg-white px-4 py-3.5 sm:px-5 sm:py-4">
+          <h2 className="text-base font-semibold sm:text-lg">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -206,7 +206,7 @@ function Modal({ title, children, onClose }) {
           </button>
         </div>
 
-        <div className="p-4 sm:p-5">{children}</div>
+        <div className="p-3.5 sm:p-5">{children}</div>
       </section>
     </div>
   )
@@ -230,17 +230,17 @@ function FoodPicker({ searchFoods, foods, onAddFood, onRemoveFood }) {
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Ex : pain, pâtes, seitan"
-        className="w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+        className="min-h-12 w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
       />
 
       {!!trimmedQuery && (
-        <div className="rounded-2xl border bg-white p-2 text-sm shadow-sm">
+        <div className="rounded-2xl border bg-white p-1.5 text-sm shadow-sm sm:p-2">
           {suggestions.map((food) => (
             <button
               key={food.id}
               type="button"
               onClick={() => addFood({ id: food.id, label: food.label, source: "database" })}
-              className="block w-full rounded-xl px-3 py-2 text-left hover:bg-gray-50"
+              className="block min-h-11 w-full rounded-xl px-3 py-2.5 text-left hover:bg-gray-50 active:bg-gray-100"
             >
               <span className="block font-medium">{food.label}</span>
             </button>
@@ -249,7 +249,7 @@ function FoodPicker({ searchFoods, foods, onAddFood, onRemoveFood }) {
           <button
             type="button"
             onClick={() => addFood({ id: createId("free-food"), label: trimmedQuery, source: "free-text" })}
-            className="block w-full rounded-xl px-3 py-2 text-left font-medium text-gray-700 hover:bg-gray-50"
+            className="block min-h-11 w-full rounded-xl px-3 py-2.5 text-left font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100"
           >
             Ajouter "{trimmedQuery}"
           </button>
@@ -259,7 +259,7 @@ function FoodPicker({ searchFoods, foods, onAddFood, onRemoveFood }) {
       {!!foods.length && (
         <div className="flex flex-wrap gap-2">
           {foods.map((food) => (
-            <span key={food.id} className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm">
+            <span key={food.id} className="inline-flex min-h-8 items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm">
               {food.label}
               <button
                 type="button"
@@ -279,12 +279,6 @@ function FoodPicker({ searchFoods, foods, onAddFood, onRemoveFood }) {
 
 function SymptomEditor({ symptoms, consumedAt, onChange }) {
   const [expandedIndexes, setExpandedIndexes] = useState(() => new Set())
-
-  useEffect(() => {
-    setExpandedIndexes((current) => (
-      new Set([...current].filter((index) => index < symptoms.length))
-    ))
-  }, [symptoms.length])
 
   function addSymptom() {
     const nextIndex = symptoms.length
@@ -335,7 +329,7 @@ function SymptomEditor({ symptoms, consumedAt, onChange }) {
         <button
           type="button"
           onClick={addSymptom}
-          className="rounded-full border bg-white px-3 py-1 text-sm font-medium hover:bg-gray-50"
+          className="min-h-9 rounded-full border bg-white px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
         >
           Ajouter
         </button>
@@ -349,11 +343,11 @@ function SymptomEditor({ symptoms, consumedAt, onChange }) {
 
       {symptoms.map((symptom, index) => (
         expandedIndexes.has(index) ? (
-          <div key={`${symptom.tag}-${index}`} className="space-y-4 rounded-2xl border bg-white p-4">
+          <div key={`${symptom.tag}-${index}`} className="space-y-4 rounded-2xl border bg-white p-3.5 sm:p-4">
             <button
               type="button"
               onClick={() => collapseSymptom(index)}
-              className="flex w-full items-start justify-between gap-3 rounded-xl bg-slate-50 p-3 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+              className="flex w-full items-start justify-between gap-3 rounded-xl bg-slate-50 p-3 text-left hover:bg-slate-100 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
               aria-label={`Replier le ressenti ${symptom.tag}`}
             >
               <span className="min-w-0">
@@ -372,7 +366,7 @@ function SymptomEditor({ symptoms, consumedAt, onChange }) {
                   id={`symptom-tag-${index}`}
                   value={symptom.tag}
                   onChange={(event) => updateSymptom(index, { tag: event.target.value })}
-                  className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+                  className="min-h-11 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
                 >
                   {symptomTags.map((tag) => <option key={tag}>{tag}</option>)}
                 </select>
@@ -384,7 +378,7 @@ function SymptomEditor({ symptoms, consumedAt, onChange }) {
                   id={`symptom-delay-${index}`}
                   value={symptom.delay}
                   onChange={(event) => updateSymptom(index, { delay: event.target.value })}
-                  className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+                  className="min-h-11 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
                 >
                   {symptomDelays.map((delay) => <option key={delay}>{delay}</option>)}
                 </select>
@@ -403,7 +397,7 @@ function SymptomEditor({ symptoms, consumedAt, onChange }) {
                 max="5"
                 value={symptom.intensity}
                 onChange={(event) => updateSymptom(index, { intensity: Number(event.target.value) })}
-                className="w-full"
+                className="w-full accent-gray-950"
               />
             </div>
 
@@ -412,21 +406,21 @@ function SymptomEditor({ symptoms, consumedAt, onChange }) {
               onChange={(event) => updateSymptom(index, { note: event.target.value })}
               placeholder="Note sur ce ressenti"
               rows="2"
-              className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
+              className="w-full rounded-xl border px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-gray-200 sm:text-sm"
             />
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
               <button
                 type="button"
                 onClick={() => collapseSymptom(index)}
-                className="rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+                className="min-h-11 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
               >
                 Publier le ressenti
               </button>
               <button
                 type="button"
                 onClick={() => removeSymptom(index)}
-                className="text-sm font-medium text-red-700 hover:text-red-900"
+                className="min-h-10 rounded-2xl border bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 hover:text-red-900 sm:border-0 sm:px-0"
               >
                 Retirer ce ressenti
               </button>
@@ -437,7 +431,7 @@ function SymptomEditor({ symptoms, consumedAt, onChange }) {
             key={`${symptom.tag}-${index}`}
             type="button"
             onClick={() => expandSymptom(index)}
-            className="flex w-full items-start justify-between gap-3 rounded-2xl border bg-white p-4 text-left hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+            className="flex w-full items-start justify-between gap-3 rounded-2xl border bg-white p-3.5 text-left hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 sm:p-4"
             aria-label={`Modifier le ressenti ${symptom.tag}`}
           >
             <span className="min-w-0">
@@ -469,14 +463,14 @@ function SuspectManager({ suspects, suspectCounts, onAddSuspect, onDeleteSuspect
         <p className="mt-1 text-sm text-gray-500">Ajoute une famille ou un aliment à observer dans le temps.</p>
       </div>
 
-      <form onSubmit={submit} className="flex gap-2">
+      <form onSubmit={submit} className="grid gap-2 sm:flex">
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Ex : sucre, soja, alcool"
-          className="min-w-0 flex-1 rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+          className="min-h-12 min-w-0 flex-1 rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
         />
-        <button type="submit" className="rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+        <button type="submit" className="min-h-12 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
           Ajouter
         </button>
       </form>
@@ -556,7 +550,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
             type="datetime-local"
             value={entry.consumedAt}
             onChange={(event) => setEntry({ ...entry, consumedAt: event.target.value })}
-            className="w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+            className="min-h-12 w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
             required
           />
         </div>
@@ -567,7 +561,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
             <button
               type="button"
               onClick={onOpenSuspects}
-              className="text-sm font-medium text-gray-600 hover:text-gray-950"
+              className="shrink-0 text-sm font-medium text-gray-600 hover:text-gray-950"
             >
               Modifier la liste
             </button>
@@ -576,7 +570,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
             id="journal-suspect"
             value={entry.suspectId}
             onChange={(event) => setEntry({ ...entry, suspectId: event.target.value })}
-            className="w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+            className="min-h-12 w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
             required
           >
             {suspects.map((suspect) => <option key={suspect.id} value={suspect.id}>{suspect.name}</option>)}
@@ -616,11 +610,11 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
         onChange={(symptoms) => setEntry({ ...entry, symptoms })}
       />
 
-      <div className="flex flex-wrap gap-3 pt-1">
-        <button type="submit" disabled={!entry.suspectId} className="rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300">
+      <div className="grid gap-2 pt-1 sm:flex sm:flex-wrap sm:gap-3">
+        <button type="submit" disabled={!entry.suspectId} className="min-h-12 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300">
           {editingEntry ? "Enregistrer les changements" : "Enregistrer la prise"}
         </button>
-        <button type="button" onClick={onCancel} className="rounded-2xl border bg-white px-4 py-3 text-sm font-semibold hover:bg-gray-50">
+        <button type="button" onClick={onCancel} className="min-h-12 rounded-2xl border bg-white px-4 py-3 text-sm font-semibold hover:bg-gray-50">
           Annuler
         </button>
       </div>
@@ -678,7 +672,7 @@ function JournalFilters({ filters, suspects, onChange }) {
 function EntryList({ entries, suspects, onEdit, onDelete }) {
   if (!entries.length) {
     return (
-      <section className="rounded-3xl border border-dashed bg-white p-6 text-center text-sm text-gray-500">
+      <section className="rounded-2xl border border-dashed bg-white p-5 text-center text-sm text-gray-500 sm:rounded-3xl sm:p-6">
         Aucune prise ne correspond aux filtres actuels.
       </section>
     )
@@ -687,17 +681,17 @@ function EntryList({ entries, suspects, onEdit, onDelete }) {
   return (
     <section className="space-y-3">
       {entries.map((entry) => (
-        <article key={entry.id} className="space-y-3 rounded-3xl border bg-white p-5">
+        <article key={entry.id} className="space-y-3 rounded-2xl border bg-white p-4 sm:rounded-3xl sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs uppercase text-gray-400">{formatDate(entry.consumedAt)}</div>
-              <h3 className="mt-1 text-lg font-semibold">{getSuspectName(suspects, entry.suspectId)}</h3>
+              <h3 className="mt-1 text-base font-semibold sm:text-lg">{getSuspectName(suspects, entry.suspectId)}</h3>
             </div>
             <div className="flex shrink-0 gap-2">
               <button
                 type="button"
                 onClick={() => onEdit(entry)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50 hover:text-gray-950"
+                className="flex h-10 w-10 items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50 hover:text-gray-950"
                 aria-label="Modifier la prise"
                 title="Modifier"
               >
@@ -706,7 +700,7 @@ function EntryList({ entries, suspects, onEdit, onDelete }) {
               <button
                 type="button"
                 onClick={() => onDelete(entry.id)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border text-red-700 hover:bg-red-50"
+                className="flex h-10 w-10 items-center justify-center rounded-full border text-red-700 hover:bg-red-50"
                 aria-label="Supprimer la prise"
                 title="Supprimer"
               >
@@ -732,7 +726,7 @@ function EntryList({ entries, suspects, onEdit, onDelete }) {
                   key={`${entry.id}-${symptom.tag}-${index}`}
                   type="button"
                   onClick={() => onEdit(entry)}
-                  className="flex w-full items-start justify-between gap-3 rounded-2xl bg-slate-50 p-3 text-left text-sm hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+                  className="flex w-full items-start justify-between gap-3 rounded-2xl bg-slate-50 p-3 text-left text-sm hover:bg-slate-100 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
                   aria-label={`Modifier le ressenti ${symptom.tag}`}
                   title="Modifier le ressenti"
                 >
@@ -872,17 +866,17 @@ export default function FoodJournalView({ searchFoods }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <header className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">Journal de tolérance</h1>
           <p className="mt-1 text-sm text-gray-500">Observe les prises alimentaires suspectes et les ressentis associés, sans diagnostic automatique.</p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap">
           <button
             type="button"
             onClick={openNewEntry}
-            className="inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
           >
             <PlusIcon className="h-4 w-4" />
             Nouvelle prise
@@ -890,7 +884,7 @@ export default function FoodJournalView({ searchFoods }) {
           <button
             type="button"
             onClick={() => setIsSuspectsModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
           >
             <EditIcon className="h-4 w-4" />
             Suspects
