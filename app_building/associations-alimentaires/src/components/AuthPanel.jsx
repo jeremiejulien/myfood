@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-export default function AuthPanel({ supabaseClient }) {
+export default function AuthPanel({ supabaseClient, framed = true }) {
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState("")
   const [error, setError] = useState("")
@@ -32,7 +32,7 @@ export default function AuthPanel({ supabaseClient }) {
   }
 
   return (
-    <section className="mx-auto max-w-lg rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
+    <section className={framed ? "mx-auto max-w-lg rounded-2xl border bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6" : "space-y-5"}>
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Connexion au journal</h2>
         <p className="text-sm text-gray-500">

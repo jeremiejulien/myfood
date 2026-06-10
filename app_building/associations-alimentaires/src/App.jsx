@@ -293,6 +293,62 @@ function Suggestions({ suggestions, onSelect }) {
   )
 }
 
+function AccountIcon({ className = "h-5 w-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function AccountModal({ session, isAuthLoading, authConfigured, supabaseClient, onClose, onSignOut }) {
+  const email = session?.user?.email
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Compte">
+      <button type="button" className="absolute inset-0" aria-label="Fermer le compte" onClick={onClose} />
+      <section className="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Compte</h2>
+            <p className="mt-1 text-sm text-gray-500">Connexion et synchronisation de ton journal.</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center text-2xl leading-none text-gray-500 hover:text-gray-950" aria-label="Fermer le compte">✕</button>
+        </div>
+
+        <div className="mt-5">
+          {isAuthLoading ? (
+            <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500">Chargement de la session...</div>
+          ) : !authConfigured ? (
+            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Les comptes ne sont pas encore configurés sur cet environnement. Le journal reste disponible en local.
+            </div>
+          ) : email ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border bg-gray-50 px-4 py-3">
+                <div className="text-xs uppercase text-gray-400">Connecté avec</div>
+                <div className="mt-1 break-all text-sm font-medium text-gray-900">{email}</div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await onSignOut()
+                }}
+                className="min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm font-semibold hover:bg-gray-50"
+              >
+                Se déconnecter
+              </button>
+            </div>
+          ) : (
+            <AuthPanel supabaseClient={supabaseClient} framed={false} />
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export default function FoodPairingApp() {
   const [activeView, setActiveView] = useState("associations")
   const [query, setQuery] = useState("")
@@ -302,6 +358,7 @@ export default function FoodPairingApp() {
   const [openCategory, setOpenCategory] = useState(null)
   const [session, setSession] = useState(null)
   const [isAuthLoading, setIsAuthLoading] = useState(isSupabaseConfigured)
+  const [isAccountOpen, setIsAccountOpen] = useState(false)
 
   useEffect(() => {
     if (!supabase) return undefined
@@ -351,11 +408,27 @@ export default function FoodPairingApp() {
     setSelectedComparisonFood(null)
   }
 
+  async function signOut() {
+    await supabase?.auth.signOut()
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 px-3 py-4 pb-10 text-gray-950 sm:p-6">
       <div className="mx-auto max-w-3xl space-y-4 sm:space-y-5">
         <header className="space-y-3 pt-1 sm:space-y-4 sm:pt-4">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Associations alimentaires</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Associations alimentaires</h1>
+            <button
+              type="button"
+              onClick={() => setIsAccountOpen(true)}
+              className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-white shadow-sm hover:bg-gray-50 ${session?.user ? "text-gray-950" : "text-gray-500"}`}
+              aria-label="Ouvrir le compte"
+              title="Compte"
+            >
+              <AccountIcon />
+              {session?.user && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white" aria-hidden="true" />}
+            </button>
+          </div>
           <p className="text-sm text-gray-500">
             Recherche les associations entre aliments ou tiens un journal personnel de tolérance.
           </p>
@@ -462,20 +535,27 @@ export default function FoodPairingApp() {
           <section className="rounded-2xl border bg-white p-5 text-sm text-gray-500 shadow-sm sm:rounded-3xl">
             Chargement de la session...
           </section>
-        ) : isSupabaseConfigured && !session ? (
-          <AuthPanel supabaseClient={supabase} />
         ) : (
           <FoodJournalView
             searchFoods={searchFoods}
             session={session}
             supabaseClient={supabase}
             authConfigured={isSupabaseConfigured}
-            onSignOut={() => supabase?.auth.signOut()}
           />
         )}
       </div>
 
       <CategoryDrawer category={openCategory} onClose={() => setOpenCategory(null)} onSelectFood={selectMainFood} />
+      {isAccountOpen && (
+        <AccountModal
+          session={session}
+          isAuthLoading={isAuthLoading}
+          authConfigured={isSupabaseConfigured}
+          supabaseClient={supabase}
+          onClose={() => setIsAccountOpen(false)}
+          onSignOut={signOut}
+        />
+      )}
     </div>
   )
 }

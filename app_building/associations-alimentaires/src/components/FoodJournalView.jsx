@@ -765,7 +765,6 @@ export default function FoodJournalView({
   session = null,
   supabaseClient = null,
   authConfigured = false,
-  onSignOut,
 }) {
   const user = session?.user
   const remoteEnabled = Boolean(authConfigured && supabaseClient && user?.id)
@@ -971,13 +970,7 @@ export default function FoodJournalView({
           <h1 className="text-xl font-semibold tracking-tight">Journal de tolérance</h1>
           <p className="mt-1 text-sm text-gray-500">Observe les prises alimentaires suspectes et les ressentis associés, sans diagnostic automatique.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-            {user?.email && <span>{user.email}</span>}
             <span className="rounded-full bg-white px-2 py-1 ring-1 ring-gray-200">{displayedSyncState}</span>
-            {onSignOut && (
-              <button type="button" onClick={onSignOut} className="font-medium text-gray-700 hover:text-gray-950">
-                Déconnexion
-              </button>
-            )}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap">
