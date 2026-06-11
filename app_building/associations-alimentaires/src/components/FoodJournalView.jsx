@@ -277,7 +277,7 @@ function Modal({ title, children, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center text-3xl leading-none text-gray-500 hover:text-gray-950"
+            className="flex h-12 w-12 items-center justify-center text-5xl leading-none text-gray-500 hover:text-gray-950"
             aria-label="Fermer la fenêtre"
           >
             ×
@@ -796,7 +796,6 @@ export default function FoodJournalView({
   const remoteEnabled = Boolean(authConfigured && supabaseClient && user?.id)
   const [journal, setJournal] = useState(readStoredJournal)
   const [loadedUserId, setLoadedUserId] = useState("")
-  const [syncState, setSyncState] = useState("Local")
   const [syncError, setSyncError] = useState("")
   const [filters, setFilters] = useState({ suspectId: "", symptomTag: "", period: "all", text: "" })
   const [editingEntry, setEditingEntry] = useState(null)
@@ -807,14 +806,6 @@ export default function FoodJournalView({
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
   const hasLoadedRemoteJournal = useRef(false)
   const isJournalReady = !remoteEnabled || loadedUserId === user?.id
-  const displayedSyncState = remoteEnabled && !isJournalReady
-    ? "Chargement..."
-    : remoteEnabled
-      ? syncState
-      : authConfigured
-        ? "Connexion requise"
-        : "Local"
-
   useEffect(() => {
     if (!remoteEnabled) {
       hasLoadedRemoteJournal.current = false
@@ -836,14 +827,12 @@ export default function FoodJournalView({
 
       if (error) {
         setSyncError(error.message)
-        setSyncState("Erreur")
         setLoadedUserId(user.id)
         return
       }
 
       const nextJournal = normalizeJournal(data?.journal_data || { suspects: defaultSuspects, entries: [], symptoms: [] })
       setJournal(nextJournal)
-      setSyncState(data?.journal_data ? "Synchronisé" : "Nouveau journal")
       hasLoadedRemoteJournal.current = true
       setLoadedUserId(user.id)
     }
@@ -866,7 +855,6 @@ export default function FoodJournalView({
 
     const timeoutId = window.setTimeout(async () => {
       setSyncError("")
-      setSyncState("Synchronisation...")
 
       const { error } = await supabaseClient
         .from("user_journals")
@@ -878,9 +866,6 @@ export default function FoodJournalView({
 
       if (error) {
         setSyncError(error.message)
-        setSyncState("Erreur")
-      } else {
-        setSyncState("Synchronisé")
       }
     }, 500)
 
@@ -1075,9 +1060,6 @@ export default function FoodJournalView({
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">Journal de tolérance</h1>
           <p className="mt-1 text-sm text-gray-500">Observe les prises alimentaires suspectes et les ressentis associés, sans diagnostic automatique.</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-            <span className="rounded-full bg-white px-2 py-1 ring-1 ring-gray-200">{displayedSyncState}</span>
-          </div>
         </div>
       </header>
 

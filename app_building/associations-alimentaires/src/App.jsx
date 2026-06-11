@@ -201,7 +201,7 @@ function CategoryDrawer({ category, onClose, onSelectFood }) {
                 <h2 className="mt-1 truncate text-lg font-semibold sm:text-xl">{title}</h2>
                 <p className="mt-1 text-sm text-gray-500">{foods.length} aliment{foods.length > 1 ? "s" : ""}</p>
               </div>
-              <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center text-2xl leading-none text-gray-500 hover:text-gray-950" aria-label="Fermer la liste">✕</button>
+              <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center text-4xl leading-none text-gray-500 hover:text-gray-950" aria-label="Fermer la liste">✕</button>
             </div>
           </div>
 
@@ -314,7 +314,7 @@ function AccountModal({ session, isAuthLoading, authConfigured, supabaseClient, 
             <h2 className="text-lg font-semibold">Compte</h2>
             <p className="mt-1 text-sm text-gray-500">Connexion et synchronisation de ton journal.</p>
           </div>
-          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center text-2xl leading-none text-gray-500 hover:text-gray-950" aria-label="Fermer le compte">✕</button>
+          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center text-4xl leading-none text-gray-500 hover:text-gray-950" aria-label="Fermer le compte">✕</button>
         </div>
 
         <div className="mt-5">
