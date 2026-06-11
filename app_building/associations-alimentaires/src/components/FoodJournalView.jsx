@@ -17,8 +17,6 @@ const symptomTags = [
   "Autre",
 ]
 
-const symptomDelays = ["Immédiat", "1-3h", "3-12h", "Lendemain", "Autre"]
-
 const defaultSuspects = ["Gluten", "Lactose", "Café"].map((name, index) => ({
   id: `default-${name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`,
   name,
@@ -31,13 +29,12 @@ const emptyEntry = {
   suspectId: "",
   foods: [],
   note: "",
-  symptoms: [],
 }
 
 const emptySymptom = {
+  occurredAt: "",
   tag: "Ballonnement",
   intensity: 3,
-  delay: "1-3h",
   note: "",
 }
 
@@ -58,20 +55,6 @@ function fromDatetimeLocalValue(value) {
   return value ? new Date(value).toISOString() : new Date().toISOString()
 }
 
-function getDelayFromConsumedAt(consumedAt, symptomDate = new Date()) {
-  const consumedTime = new Date(consumedAt).getTime()
-  const symptomTime = symptomDate.getTime()
-
-  if (!Number.isFinite(consumedTime) || symptomTime < consumedTime) return emptySymptom.delay
-
-  const hours = (symptomTime - consumedTime) / (1000 * 60 * 60)
-  if (hours < 1) return "Immédiat"
-  if (hours < 3) return "1-3h"
-  if (hours < 12) return "3-12h"
-  if (hours < 36) return "Lendemain"
-  return "Autre"
-}
-
 function formatDate(value) {
   if (!value) return ""
 
@@ -84,9 +67,28 @@ function formatDate(value) {
   }).format(new Date(value))
 }
 
+function formatDay(value) {
+  if (!value) return ""
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value))
+}
+
+function getDayKey(value) {
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return "unknown"
+
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return localDate.toISOString().slice(0, 10)
+}
+
 function readStoredJournal() {
   if (typeof window === "undefined") {
-    return { suspects: defaultSuspects, entries: [] }
+    return { suspects: defaultSuspects, entries: [], symptoms: [] }
   }
 
   try {
@@ -94,26 +96,28 @@ function readStoredJournal() {
       || (APP_ENV === "preprod" ? null : window.localStorage.getItem(LEGACY_STORAGE_KEY))
     const stored = JSON.parse(storedValue || "null")
     if (!stored || !Array.isArray(stored.suspects) || !Array.isArray(stored.entries)) {
-      return { suspects: defaultSuspects, entries: [] }
+      return { suspects: defaultSuspects, entries: [], symptoms: [] }
     }
 
     return {
       suspects: stored.suspects.length ? stored.suspects : defaultSuspects,
       entries: stored.entries,
+      symptoms: Array.isArray(stored.symptoms) ? stored.symptoms : [],
     }
   } catch {
-    return { suspects: defaultSuspects, entries: [] }
+    return { suspects: defaultSuspects, entries: [], symptoms: [] }
   }
 }
 
 function normalizeJournal(value) {
   if (!value || !Array.isArray(value.suspects) || !Array.isArray(value.entries)) {
-    return { suspects: defaultSuspects, entries: [] }
+    return { suspects: defaultSuspects, entries: [], symptoms: [] }
   }
 
   return {
     suspects: value.suspects.length ? value.suspects : defaultSuspects,
     entries: value.entries,
+    symptoms: Array.isArray(value.symptoms) ? value.symptoms : [],
   }
 }
 
@@ -128,7 +132,6 @@ function getFilteredEntries(entries, filters) {
 
   return entries.filter((entry) => {
     if (filters.suspectId && entry.suspectId !== filters.suspectId) return false
-    if (filters.symptomTag && !entry.symptoms.some((symptom) => symptom.tag === filters.symptomTag)) return false
 
     if (periodDays) {
       const entryTime = new Date(entry.consumedAt).getTime()
@@ -139,7 +142,6 @@ function getFilteredEntries(entries, filters) {
       const searchable = [
         entry.note,
         ...entry.foods.map((food) => food.label),
-        ...entry.symptoms.map((symptom) => `${symptom.tag} ${symptom.note}`),
       ]
         .join(" ")
         .toLowerCase()
@@ -149,6 +151,50 @@ function getFilteredEntries(entries, filters) {
 
     return true
   })
+}
+
+function getFilteredSymptoms(symptoms, filters) {
+  const now = Date.now()
+  const periodDays = filters.period === "7" ? 7 : filters.period === "30" ? 30 : null
+  const text = filters.text.trim().toLowerCase()
+
+  return symptoms.filter((symptom) => {
+    if (filters.suspectId) return false
+    if (filters.symptomTag && symptom.tag !== filters.symptomTag) return false
+
+    if (periodDays) {
+      const symptomTime = new Date(symptom.occurredAt).getTime()
+      if (!Number.isFinite(symptomTime) || now - symptomTime > periodDays * 24 * 60 * 60 * 1000) return false
+    }
+
+    if (text) {
+      const searchable = [symptom.tag, symptom.note].join(" ").toLowerCase()
+      if (!searchable.includes(text)) return false
+    }
+
+    return true
+  })
+}
+
+function groupJournalItemsByDay(entries, symptoms) {
+  const items = [
+    ...entries.map((entry) => ({ type: "entry", id: entry.id, date: entry.consumedAt, data: entry })),
+    ...symptoms.map((symptom) => ({ type: "symptom", id: symptom.id, date: symptom.occurredAt, data: symptom })),
+  ]
+    .filter((item) => item.id && item.date)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  return items.reduce((days, item) => {
+    const key = getDayKey(item.date)
+    const existingDay = days.find((day) => day.key === key)
+    if (existingDay) {
+      existingDay.items.push(item)
+      return days
+    }
+
+    days.push({ key, label: formatDay(item.date), items: [item] })
+    return days
+  }, [])
 }
 
 function FieldLabel({ children, htmlFor }) {
@@ -173,6 +219,27 @@ function PlusIcon({ className = "h-4 w-4" }) {
     <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 5v14" />
       <path d="M5 12h14" />
+    </svg>
+  )
+}
+
+function ForkIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3v7" />
+      <path d="M10 3v7" />
+      <path d="M6 7h4" />
+      <path d="M8 10v11" />
+      <path d="M18 3v18" />
+    </svg>
+  )
+}
+
+function FeelingIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.8 8.6c0 5.3-8.8 10.4-8.8 10.4S3.2 13.9 3.2 8.6A4.6 4.6 0 0 1 12 6.5a4.6 4.6 0 0 1 8.8 2.1Z" />
+      <path d="M9 12h6" />
     </svg>
   )
 }
@@ -210,7 +277,7 @@ function Modal({ title, children, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center text-2xl leading-none text-gray-500 hover:text-gray-950"
+            className="flex h-9 w-9 items-center justify-center text-3xl leading-none text-gray-500 hover:text-gray-950"
             aria-label="Fermer la fenêtre"
           >
             ×
@@ -288,174 +355,98 @@ function FoodPicker({ searchFoods, foods, onAddFood, onRemoveFood }) {
   )
 }
 
-function SymptomEditor({ symptoms, consumedAt, onChange }) {
-  const [expandedIndexes, setExpandedIndexes] = useState(() => new Set())
+function SymptomForm({ editingSymptom, onSave, onCancel }) {
+  const [symptom, setSymptom] = useState(() => {
+    if (editingSymptom) {
+      return {
+        ...editingSymptom,
+        occurredAt: toDatetimeLocalValue(new Date(editingSymptom.occurredAt)),
+      }
+    }
 
-  function addSymptom() {
-    const nextIndex = symptoms.length
-    onChange([
-      ...symptoms,
-      {
-        ...emptySymptom,
-        delay: getDelayFromConsumedAt(consumedAt),
-      },
-    ])
-    setExpandedIndexes((current) => new Set([...current, nextIndex]))
-  }
+    return {
+      ...emptySymptom,
+      occurredAt: toDatetimeLocalValue(),
+    }
+  })
 
-  function expandSymptom(index) {
-    setExpandedIndexes((current) => new Set([...current, index]))
-  }
+  function save(event) {
+    event.preventDefault()
 
-  function collapseSymptom(index) {
-    setExpandedIndexes((current) => {
-      const next = new Set(current)
-      next.delete(index)
-      return next
+    onSave({
+      ...symptom,
+      occurredAt: fromDatetimeLocalValue(symptom.occurredAt),
+      intensity: Number(symptom.intensity),
     })
-  }
-
-  function removeSymptom(index) {
-    onChange(symptoms.filter((_, symptomIndex) => symptomIndex !== index))
-    setExpandedIndexes((current) => {
-      const next = new Set()
-      current.forEach((expandedIndex) => {
-        if (expandedIndex < index) next.add(expandedIndex)
-        if (expandedIndex > index) next.add(expandedIndex - 1)
-      })
-      return next
-    })
-  }
-
-  function updateSymptom(index, patch) {
-    onChange(symptoms.map((symptom, symptomIndex) => (
-      symptomIndex === index ? { ...symptom, ...patch } : symptom
-    )))
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <FieldLabel>Ressentis</FieldLabel>
-        <button
-          type="button"
-          onClick={addSymptom}
-          className="min-h-9 rounded-full border bg-white px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
-        >
-          Ajouter
-        </button>
+    <form onSubmit={save} className="space-y-4">
+      <p className="text-sm text-gray-500">Note un ressenti indépendamment des prises. Son heure permettra de le rapprocher des prises plus tard.</p>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <FieldLabel htmlFor="symptom-occurred-at">Date et heure</FieldLabel>
+          <input
+            id="symptom-occurred-at"
+            type="datetime-local"
+            value={symptom.occurredAt}
+            onChange={(event) => setSymptom({ ...symptom, occurredAt: event.target.value })}
+            className="min-h-12 w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <FieldLabel htmlFor="symptom-tag">Type</FieldLabel>
+          <select
+            id="symptom-tag"
+            value={symptom.tag}
+            onChange={(event) => setSymptom({ ...symptom, tag: event.target.value })}
+            className="min-h-12 w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+          >
+            {symptomTags.map((tag) => <option key={tag}>{tag}</option>)}
+          </select>
+        </div>
       </div>
 
-      {!symptoms.length && (
-        <div className="rounded-2xl border border-dashed bg-white px-4 py-5 text-sm text-gray-500">
-          Tu peux enregistrer la prise maintenant, puis ajouter un ressenti plus tard.
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel htmlFor="symptom-intensity">Intensité</FieldLabel>
+          <span className="text-sm font-semibold text-gray-700">{symptom.intensity}/5</span>
         </div>
-      )}
+        <input
+          id="symptom-intensity"
+          type="range"
+          min="0"
+          max="5"
+          value={symptom.intensity}
+          onChange={(event) => setSymptom({ ...symptom, intensity: Number(event.target.value) })}
+          className="w-full accent-gray-950"
+        />
+      </div>
 
-      {symptoms.map((symptom, index) => (
-        expandedIndexes.has(index) ? (
-          <div key={`${symptom.tag}-${index}`} className="space-y-4 rounded-2xl border bg-white p-3.5 sm:p-4">
-            <button
-              type="button"
-              onClick={() => collapseSymptom(index)}
-              className="flex w-full items-start justify-between gap-3 rounded-xl bg-slate-50 p-3 text-left hover:bg-slate-100 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
-              aria-label={`Replier le ressenti ${symptom.tag}`}
-            >
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-gray-950">{symptom.tag} · {symptom.intensity}/5 · {symptom.delay}</span>
-                {symptom.note && <span className="mt-1 block text-sm text-gray-500">{symptom.note}</span>}
-              </span>
-              <span className="mt-0.5 shrink-0 text-gray-400">
-                <EditIcon className="h-4 w-4" />
-              </span>
-            </button>
+      <div className="space-y-2">
+        <FieldLabel htmlFor="symptom-note">Note</FieldLabel>
+        <textarea
+          id="symptom-note"
+          value={symptom.note}
+          onChange={(event) => setSymptom({ ...symptom, note: event.target.value })}
+          placeholder="Ex : ballonnement léger en fin d'après-midi"
+          rows="3"
+          className="w-full rounded-2xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-200"
+        />
+      </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <FieldLabel htmlFor={`symptom-tag-${index}`}>Type</FieldLabel>
-                <select
-                  id={`symptom-tag-${index}`}
-                  value={symptom.tag}
-                  onChange={(event) => updateSymptom(index, { tag: event.target.value })}
-                  className="min-h-11 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
-                >
-                  {symptomTags.map((tag) => <option key={tag}>{tag}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <FieldLabel htmlFor={`symptom-delay-${index}`}>Délai</FieldLabel>
-                <select
-                  id={`symptom-delay-${index}`}
-                  value={symptom.delay}
-                  onChange={(event) => updateSymptom(index, { delay: event.target.value })}
-                  className="min-h-11 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
-                >
-                  {symptomDelays.map((delay) => <option key={delay}>{delay}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <FieldLabel htmlFor={`symptom-intensity-${index}`}>Intensité</FieldLabel>
-                <span className="text-sm font-semibold text-gray-700">{symptom.intensity}/5</span>
-              </div>
-              <input
-                id={`symptom-intensity-${index}`}
-                type="range"
-                min="0"
-                max="5"
-                value={symptom.intensity}
-                onChange={(event) => updateSymptom(index, { intensity: Number(event.target.value) })}
-                className="w-full accent-gray-950"
-              />
-            </div>
-
-            <textarea
-              value={symptom.note}
-              onChange={(event) => updateSymptom(index, { note: event.target.value })}
-              placeholder="Note sur ce ressenti"
-              rows="2"
-              className="w-full rounded-xl border px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-gray-200 sm:text-sm"
-            />
-
-            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-              <button
-                type="button"
-                onClick={() => collapseSymptom(index)}
-                className="min-h-11 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
-              >
-                Publier le ressenti
-              </button>
-              <button
-                type="button"
-                onClick={() => removeSymptom(index)}
-                className="min-h-10 rounded-2xl border bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 hover:text-red-900 sm:border-0 sm:px-0"
-              >
-                Retirer ce ressenti
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            key={`${symptom.tag}-${index}`}
-            type="button"
-            onClick={() => expandSymptom(index)}
-            className="flex w-full items-start justify-between gap-3 rounded-2xl border bg-white p-3.5 text-left hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 sm:p-4"
-            aria-label={`Modifier le ressenti ${symptom.tag}`}
-          >
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-gray-950">{symptom.tag} · {symptom.intensity}/5 · {symptom.delay}</span>
-              {symptom.note && <span className="mt-1 block text-sm text-gray-500">{symptom.note}</span>}
-            </span>
-            <span className="mt-0.5 shrink-0 text-gray-400">
-              <EditIcon className="h-4 w-4" />
-            </span>
-          </button>
-        )
-      ))}
-    </div>
+      <div className="grid gap-2 pt-1 sm:flex sm:flex-wrap sm:gap-3">
+        <button type="submit" className="min-h-12 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800">
+          {editingSymptom ? "Enregistrer les changements" : "Enregistrer le ressenti"}
+        </button>
+        <button type="button" onClick={onCancel} className="min-h-12 rounded-2xl border bg-white px-4 py-3 text-sm font-semibold hover:bg-gray-50">
+          Annuler
+        </button>
+      </div>
+    </form>
   )
 }
 
@@ -538,7 +529,6 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
       ...entry,
       consumedAt: fromDatetimeLocalValue(entry.consumedAt),
       foods: entry.foods,
-      symptoms: entry.symptoms,
     })
 
     if (!editingEntry) {
@@ -552,7 +542,7 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
 
   return (
     <form onSubmit={save} className="space-y-4">
-      <p className="text-sm text-gray-500">Note ce que tu as consommé et les ressentis observés.</p>
+      <p className="text-sm text-gray-500">Note ce que tu as consommé. Les ressentis se créent séparément avec leur propre heure.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <FieldLabel htmlFor="journal-consumed-at">Date et heure</FieldLabel>
@@ -615,12 +605,6 @@ function EntryForm({ suspects, editingEntry, searchFoods, onSave, onCancel, onOp
         />
       </div>
 
-      <SymptomEditor
-        symptoms={entry.symptoms}
-        consumedAt={entry.consumedAt}
-        onChange={(symptoms) => setEntry({ ...entry, symptoms })}
-      />
-
       <div className="grid gap-2 pt-1 sm:flex sm:flex-wrap sm:gap-3">
         <button type="submit" disabled={!entry.suspectId} className="min-h-12 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300">
           {editingEntry ? "Enregistrer les changements" : "Enregistrer la prise"}
@@ -680,81 +664,123 @@ function JournalFilters({ filters, suspects, onChange }) {
   )
 }
 
-function EntryList({ entries, suspects, onEdit, onDelete }) {
-  if (!entries.length) {
+function EntryCard({ entry, suspects, onEdit, onDelete }) {
+  return (
+    <article className="space-y-3 rounded-2xl border bg-white p-4 sm:rounded-3xl sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase text-gray-400">Prise · {formatDate(entry.consumedAt)}</div>
+          <h3 className="mt-1 text-base font-semibold sm:text-lg">{getSuspectName(suspects, entry.suspectId)}</h3>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(entry)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50 hover:text-gray-950"
+            aria-label="Modifier la prise"
+            title="Modifier"
+          >
+            <EditIcon />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(entry.id)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border text-red-700 hover:bg-red-50"
+            aria-label="Supprimer la prise"
+            title="Supprimer"
+          >
+            <TrashIcon />
+          </button>
+        </div>
+      </div>
+
+      {entry.foods.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {entry.foods.map((food) => (
+            <span key={food.id} className="rounded-full bg-slate-100 px-3 py-1 text-sm">{food.label}</span>
+          ))}
+        </div>
+      )}
+
+      {entry.note && <p className="text-sm text-gray-600">{entry.note}</p>}
+    </article>
+  )
+}
+
+function SymptomCard({ symptom, onEdit, onDelete }) {
+  return (
+    <article className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:rounded-3xl sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase text-amber-700/70">Ressenti · {formatDate(symptom.occurredAt)}</div>
+          <h3 className="mt-1 text-base font-semibold text-amber-950 sm:text-lg">{symptom.tag}</h3>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(symptom)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-200 bg-white/70 text-amber-900 hover:bg-white"
+            aria-label="Modifier le ressenti"
+            title="Modifier"
+          >
+            <EditIcon />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(symptom.id)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-200 bg-white/70 text-red-700 hover:bg-red-50"
+            aria-label="Supprimer le ressenti"
+            title="Supprimer"
+          >
+            <TrashIcon />
+          </button>
+        </div>
+      </div>
+
+      <div className="inline-flex rounded-full bg-white/80 px-3 py-1 text-sm font-medium text-amber-950">
+        Intensité {symptom.intensity}/5
+      </div>
+
+      {symptom.note && <p className="text-sm text-amber-950/80">{symptom.note}</p>}
+    </article>
+  )
+}
+
+function JournalTimeline({ dayGroups, suspects, onEditEntry, onDeleteEntry, onEditSymptom, onDeleteSymptom }) {
+  if (!dayGroups.length) {
     return (
       <section className="rounded-2xl border border-dashed bg-white p-5 text-center text-sm text-gray-500 sm:rounded-3xl sm:p-6">
-        Aucune prise ne correspond aux filtres actuels.
+        Aucun élément ne correspond aux filtres actuels.
       </section>
     )
   }
 
   return (
-    <section className="space-y-3">
-      {entries.map((entry) => (
-        <article key={entry.id} className="space-y-3 rounded-2xl border bg-white p-4 sm:rounded-3xl sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase text-gray-400">{formatDate(entry.consumedAt)}</div>
-              <h3 className="mt-1 text-base font-semibold sm:text-lg">{getSuspectName(suspects, entry.suspectId)}</h3>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={() => onEdit(entry)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border text-gray-600 hover:bg-gray-50 hover:text-gray-950"
-                aria-label="Modifier la prise"
-                title="Modifier"
-              >
-                <EditIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(entry.id)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border text-red-700 hover:bg-red-50"
-                aria-label="Supprimer la prise"
-                title="Supprimer"
-              >
-                <TrashIcon />
-              </button>
-            </div>
+    <section className="space-y-5">
+      {dayGroups.map((day) => (
+        <section key={day.key} className="space-y-3">
+          <h2 className="px-1 text-sm font-semibold capitalize text-gray-600">{day.label}</h2>
+          <div className="space-y-3">
+            {day.items.map((item) => (
+              item.type === "entry" ? (
+                <EntryCard
+                  key={`entry-${item.id}`}
+                  entry={item.data}
+                  suspects={suspects}
+                  onEdit={onEditEntry}
+                  onDelete={onDeleteEntry}
+                />
+              ) : (
+                <SymptomCard
+                  key={`symptom-${item.id}`}
+                  symptom={item.data}
+                  onEdit={onEditSymptom}
+                  onDelete={onDeleteSymptom}
+                />
+              )
+            ))}
           </div>
-
-          {entry.foods.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {entry.foods.map((food) => (
-                <span key={food.id} className="rounded-full bg-slate-100 px-3 py-1 text-sm">{food.label}</span>
-              ))}
-            </div>
-          )}
-
-          {entry.note && <p className="text-sm text-gray-600">{entry.note}</p>}
-
-          {entry.symptoms.length > 0 ? (
-            <div className="space-y-2">
-              {entry.symptoms.map((symptom, index) => (
-                <button
-                  key={`${entry.id}-${symptom.tag}-${index}`}
-                  type="button"
-                  onClick={() => onEdit(entry)}
-                  className="flex w-full items-start justify-between gap-3 rounded-2xl bg-slate-50 p-3 text-left text-sm hover:bg-slate-100 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
-                  aria-label={`Modifier le ressenti ${symptom.tag}`}
-                  title="Modifier le ressenti"
-                >
-                  <span className="min-w-0">
-                    <div className="font-medium">{symptom.tag} · {symptom.intensity}/5 · {symptom.delay}</div>
-                    {symptom.note && <div className="mt-1 text-gray-600">{symptom.note}</div>}
-                  </span>
-                  <span className="mt-0.5 shrink-0 text-gray-400">
-                    <EditIcon className="h-3.5 w-3.5" />
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl bg-slate-50 p-3 text-sm text-gray-500">Aucun ressenti noté pour le moment.</div>
-          )}
-        </article>
+        </section>
       ))}
     </section>
   )
@@ -774,8 +800,11 @@ export default function FoodJournalView({
   const [syncError, setSyncError] = useState("")
   const [filters, setFilters] = useState({ suspectId: "", symptomTag: "", period: "all", text: "" })
   const [editingEntry, setEditingEntry] = useState(null)
+  const [editingSymptom, setEditingSymptom] = useState(null)
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false)
+  const [isSymptomModalOpen, setIsSymptomModalOpen] = useState(false)
   const [isSuspectsModalOpen, setIsSuspectsModalOpen] = useState(false)
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
   const hasLoadedRemoteJournal = useRef(false)
   const isJournalReady = !remoteEnabled || loadedUserId === user?.id
   const displayedSyncState = remoteEnabled && !isJournalReady
@@ -812,7 +841,7 @@ export default function FoodJournalView({
         return
       }
 
-      const nextJournal = normalizeJournal(data?.journal_data || { suspects: defaultSuspects, entries: [] })
+      const nextJournal = normalizeJournal(data?.journal_data || { suspects: defaultSuspects, entries: [], symptoms: [] })
       setJournal(nextJournal)
       setSyncState(data?.journal_data ? "Synchronisé" : "Nouveau journal")
       hasLoadedRemoteJournal.current = true
@@ -870,6 +899,15 @@ export default function FoodJournalView({
       .sort((a, b) => new Date(b.consumedAt).getTime() - new Date(a.consumedAt).getTime())
   ), [journal.entries, filters])
 
+  const filteredSymptoms = useMemo(() => (
+    getFilteredSymptoms(journal.symptoms, filters)
+      .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+  ), [journal.symptoms, filters])
+
+  const dayGroups = useMemo(() => (
+    groupJournalItemsByDay(filteredEntries, filteredSymptoms)
+  ), [filteredEntries, filteredSymptoms])
+
   function addSuspect(name) {
     const cleanName = name.trim()
     if (!cleanName) return
@@ -905,6 +943,7 @@ export default function FoodJournalView({
 
   function saveEntry(entry) {
     const now = new Date().toISOString()
+    const nextEntry = { ...entry }
 
     setJournal((current) => {
       if (entry.id) {
@@ -912,7 +951,7 @@ export default function FoodJournalView({
           ...current,
           entries: current.entries.map((item) => (
             item.id === entry.id
-              ? { ...entry, updatedAt: now }
+              ? { ...nextEntry, updatedAt: now }
               : item
           )),
         }
@@ -922,7 +961,7 @@ export default function FoodJournalView({
         ...current,
         entries: [
           {
-            ...entry,
+            ...nextEntry,
             id: createId("entry"),
             createdAt: now,
             updatedAt: now,
@@ -934,6 +973,39 @@ export default function FoodJournalView({
 
     setEditingEntry(null)
     setIsEntryModalOpen(false)
+  }
+
+  function saveSymptom(symptom) {
+    const now = new Date().toISOString()
+
+    setJournal((current) => {
+      if (symptom.id) {
+        return {
+          ...current,
+          symptoms: current.symptoms.map((item) => (
+            item.id === symptom.id
+              ? { ...symptom, updatedAt: now }
+              : item
+          )),
+        }
+      }
+
+      return {
+        ...current,
+        symptoms: [
+          {
+            ...symptom,
+            id: createId("symptom"),
+            createdAt: now,
+            updatedAt: now,
+          },
+          ...current.symptoms,
+        ],
+      }
+    })
+
+    setEditingSymptom(null)
+    setIsSymptomModalOpen(false)
   }
 
   function deleteEntry(entryId) {
@@ -948,9 +1020,33 @@ export default function FoodJournalView({
     }
   }
 
+  function deleteSymptom(symptomId) {
+    setJournal((current) => ({
+      ...current,
+      symptoms: current.symptoms.filter((symptom) => symptom.id !== symptomId),
+    }))
+
+    if (editingSymptom?.id === symptomId) {
+      setEditingSymptom(null)
+      setIsSymptomModalOpen(false)
+    }
+  }
+
   function openNewEntry() {
     setEditingEntry(null)
     setIsEntryModalOpen(true)
+    setIsActionMenuOpen(false)
+  }
+
+  function openNewSymptom() {
+    setEditingSymptom(null)
+    setIsSymptomModalOpen(true)
+    setIsActionMenuOpen(false)
+  }
+
+  function openSuspectsModal() {
+    setIsSuspectsModalOpen(true)
+    setIsActionMenuOpen(false)
   }
 
   function openEditEntry(entry) {
@@ -958,38 +1054,30 @@ export default function FoodJournalView({
     setIsEntryModalOpen(true)
   }
 
+  function openEditSymptom(symptom) {
+    setEditingSymptom(symptom)
+    setIsSymptomModalOpen(true)
+  }
+
   function closeEntryModal() {
     setEditingEntry(null)
     setIsEntryModalOpen(false)
   }
 
+  function closeSymptomModal() {
+    setEditingSymptom(null)
+    setIsSymptomModalOpen(false)
+  }
+
   return (
-    <div className="space-y-4 sm:space-y-5">
-      <header className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-start sm:justify-between">
+    <div className="space-y-4 pb-24 sm:space-y-5">
+      <header className="pt-1">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">Journal de tolérance</h1>
           <p className="mt-1 text-sm text-gray-500">Observe les prises alimentaires suspectes et les ressentis associés, sans diagnostic automatique.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
             <span className="rounded-full bg-white px-2 py-1 ring-1 ring-gray-200">{displayedSyncState}</span>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap">
-          <button
-            type="button"
-            onClick={openNewEntry}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Nouvelle prise
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSuspectsModalOpen(true)}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
-          >
-            <EditIcon className="h-4 w-4" />
-            Suspects
-          </button>
         </div>
       </header>
 
@@ -1009,7 +1097,14 @@ export default function FoodJournalView({
           <div className="hidden">
             <JournalFilters filters={filters} suspects={journal.suspects} onChange={setFilters} />
           </div>
-          <EntryList entries={filteredEntries} suspects={journal.suspects} onEdit={openEditEntry} onDelete={deleteEntry} />
+          <JournalTimeline
+            dayGroups={dayGroups}
+            suspects={journal.suspects}
+            onEditEntry={openEditEntry}
+            onDeleteEntry={deleteEntry}
+            onEditSymptom={openEditSymptom}
+            onDeleteSymptom={deleteSymptom}
+          />
         </>
       )}
 
@@ -1027,6 +1122,17 @@ export default function FoodJournalView({
         </Modal>
       )}
 
+      {isSymptomModalOpen && (
+        <Modal title={editingSymptom ? "Modifier le ressenti" : "Nouveau ressenti"} onClose={closeSymptomModal}>
+          <SymptomForm
+            key={editingSymptom?.id || "new-symptom"}
+            editingSymptom={editingSymptom}
+            onSave={saveSymptom}
+            onCancel={closeSymptomModal}
+          />
+        </Modal>
+      )}
+
       {isSuspectsModalOpen && (
         <Modal title="Suspects" onClose={() => setIsSuspectsModalOpen(false)}>
           <SuspectManager
@@ -1037,6 +1143,56 @@ export default function FoodJournalView({
           />
         </Modal>
       )}
+
+      {isActionMenuOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 cursor-default"
+          aria-label="Fermer le menu de création"
+          onClick={() => setIsActionMenuOpen(false)}
+        />
+      )}
+
+      <div className="fixed bottom-5 right-4 z-40 sm:bottom-6 sm:right-6">
+        {isActionMenuOpen && (
+          <div className="mb-3 w-56 rounded-2xl border bg-white p-2 shadow-2xl">
+            <button
+              type="button"
+              onClick={openNewEntry}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-gray-50"
+            >
+              <ForkIcon className="h-4 w-4" />
+              Food
+            </button>
+            <button
+              type="button"
+              onClick={openNewSymptom}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-gray-50"
+            >
+              <FeelingIcon className="h-4 w-4" />
+              Ressenti
+            </button>
+            <button
+              type="button"
+              onClick={openSuspectsModal}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-gray-50"
+            >
+              <EditIcon className="h-4 w-4" />
+              Suspect
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setIsActionMenuOpen((current) => !current)}
+          className="ml-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-950 text-white shadow-2xl hover:bg-gray-800"
+          aria-expanded={isActionMenuOpen}
+          aria-label="Créer un élément du journal"
+          title="Créer"
+        >
+          <PlusIcon className={`h-6 w-6 transition-transform ${isActionMenuOpen ? "rotate-45" : ""}`} />
+        </button>
+      </div>
     </div>
   )
 }
