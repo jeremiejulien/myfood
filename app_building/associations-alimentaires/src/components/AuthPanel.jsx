@@ -2,9 +2,16 @@ import { useEffect, useMemo, useState } from "react"
 
 const EMAIL_COOLDOWN_SECONDS = 60
 const LAST_EMAIL_SENT_KEY = "assocAlim.auth.lastEmailSentAt"
+const PRODUCTION_AUTH_REDIRECT_URL = "https://myfood-cyan.vercel.app"
 
 function getRateLimitMessage() {
   return "Trop de demandes de connexion par email. Attends quelques minutes avant de réessayer."
+}
+
+function getAuthRedirectUrl() {
+  const { hostname, origin } = window.location
+  if (hostname === "localhost" || hostname === "127.0.0.1") return origin
+  return PRODUCTION_AUTH_REDIRECT_URL
 }
 
 export default function AuthPanel({ supabaseClient, framed = true }) {
@@ -39,7 +46,7 @@ export default function AuthPanel({ supabaseClient, framed = true }) {
     const { error: signInError } = await supabaseClient.auth.signInWithOtp({
       email: cleanEmail,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     })
 
